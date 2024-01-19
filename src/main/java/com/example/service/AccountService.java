@@ -61,4 +61,8 @@ public class AccountService {
             account.getPassword()
         );
     }
+
+    public boolean existsById(Integer id) {
+        return accountRepository.existsById(id);
+    }
 }

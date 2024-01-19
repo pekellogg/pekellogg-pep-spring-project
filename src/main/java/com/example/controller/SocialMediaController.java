@@ -9,29 +9,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-/**
- * TO DO: You will need to write your own endpoints and handlers for your controller using Spring. The endpoints you will need can be
- * found in readme.md as well as the test cases. You be required to use the @GET/POST/PUT/DELETE/etc Mapping annotations
- * where applicable as well as the @ResponseBody and @PathVariable annotations. You should
- * refer to prior mini-project labs and lecture materials for guidance on how a controller may be built.
- */
-
-/**
- * Spring MVC's @RestController includes:
- * @GetMapping
- * @PostMapping
- * @PutMapping
- * @PatchMapping
- * @DeleteMapping
-**/
-
 @RestController
 public class SocialMediaController {
     AccountService accountService;
     MessageService messageService;
 
     @Autowired
-    public SocialMediaController(AccountService accountService, MessageService messageService){
+    public SocialMediaController(AccountService accountService, MessageService messageService) {
         this.accountService = accountService;
         this.messageService = messageService;
     }
@@ -41,8 +25,10 @@ public class SocialMediaController {
      */
     @PostMapping("/register")
     public ResponseEntity<Account> saveAccountHandler(@RequestBody Account newAccount) throws BadRequestException, ConflictException {
+        // BadRequestException 400: empty username, password length of 4 or less
         if (newAccount.getUsername().isEmpty() || newAccount.getPassword().length() <= 4) throw new BadRequestException();
         Account account = accountService.save(newAccount);
+        // ConflictException 409: null from unsuccessful save due to duplicate username
         if (account == null) throw new ConflictException();
         return ResponseEntity.ok(account);
     }
@@ -53,8 +39,9 @@ public class SocialMediaController {
     @PostMapping("/login")
     public ResponseEntity<Account> loginAccountHandler(@RequestBody Account requestedAccount) throws UnauthorizedException {
         Account account =  accountService.login(requestedAccount);
+        // UnauthorizedException 401: null from unsuccessful account retrieval for account having username + password
         if (account == null) throw new UnauthorizedException();
-       return ResponseEntity.ok(account);
+        return ResponseEntity.ok(account);
     }
 
     /*
@@ -62,14 +49,18 @@ public class SocialMediaController {
      */
     @PostMapping("/messages")
     public ResponseEntity<Message> saveMessageHandler(@RequestBody Message newMessage) throws BadRequestException {
-        Message message = messageService.save(newMessage);
+        int accountId = newMessage.getPosted_by();
         String text = newMessage.getMessage_text();
-        if (text.isEmpty() || text.length() > 254 || message == null) throw new BadRequestException();
+        // BadRequestException 400: unfound account, null text field, empty text, text length exceeding 255 chars, null message from params
+        if (!accountService.existsById(accountId) || text == null || text.isBlank() || text.length() > 255 || newMessage == null) {
+            throw new BadRequestException();
+        }
+        Message message = messageService.save(newMessage);
         return ResponseEntity.ok(message);
     }
 
     /*
-     * Fetch all messages
+     * Retrieve all messages
      */
     @GetMapping("/messages")
     public ResponseEntity<List<Message>> createMessageHandler() {
@@ -78,44 +69,45 @@ public class SocialMediaController {
     }
 
     /*
-     * Fetch message by message_id
+     * Retrieve message by message_id
      */
-    @GetMapping("/messages/{message_id}")
-    public ResponseEntity<Message> getMessageHandler(@PathVariable int message_id){
-        Message message = messageService.getMessageById(message_id);
+    @GetMapping("/messages/{id}")
+    public ResponseEntity<Message> getMessageHandler(@PathVariable int id) {
+        Message message = messageService.getMessageById(id);
         return ResponseEntity.ok(message);
     }
 
     /*
      * Delete message by message_id
      */
-    @DeleteMapping("/messages/{message_id}")
-    public ResponseEntity<Integer> deleteMessageHandler(@PathVariable int message_id){
-        int binaryResult = messageService.deleteMessage(message_id);
-        return ResponseEntity.ok(binaryResult);
+    @DeleteMapping("/messages/{id}")
+    public ResponseEntity<String> deleteMessageByMessageId(@PathVariable Integer id) {
+        String result = messageService.deleteMessageById(id);
+        return ResponseEntity.ok(result);
     }
 
     /*
      * Update message_text
      */
-    @PatchMapping("/messages/{message_id}")
-    public ResponseEntity<Integer> updateMessageTextHandler(@RequestBody Message message, @PathVariable int message_id) throws BadRequestException {
+    @PatchMapping("/messages/{id}")
+    public ResponseEntity<Integer> updateMessageTextHandler(@RequestBody Message message, @PathVariable int id) throws BadRequestException {
         String text = message.getMessage_text();
-        if (text.length() < 254 && !text.isEmpty()) {
-            Message updatedMessage = messageService.updateText(message_id, text);
+        if (text.length() <= 255 && !text.isEmpty()) {
+            Message updatedMessage = messageService.updateText(id, text);
             if (updatedMessage != null) {
                 return ResponseEntity.ok(1);
             }
         }
+        // BadRequestException 400: text exceeding 255 chars, text empty
         throw new BadRequestException();
     }
 
     /*
-     * Fetch all messages by account_id
+     * Retrieve all messages by account_id
      */
-    @GetMapping("/accounts/{account_id}/messages")
-    public ResponseEntity<List<Message>> getAllMessagesByAccountIdHandler(@PathVariable int account_id){
-        List<Message> messages = messageService.getAllMessagesByAccountId(account_id);
+    @GetMapping("/accounts/{id}/messages")
+    public ResponseEntity<List<Message>> getAllMessagesByAccountIdHandler(@PathVariable int id) {
+        List<Message> messages = messageService.getAllMessagesByAccountId(id);
         return ResponseEntity.ok(messages);
     }
 }

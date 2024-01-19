@@ -1,10 +1,10 @@
 package com.example.service;
+import com.example.entity.Account;
 import com.example.entity.Message;
 import com.example.repository.MessageRepository;
 import com.example.repository.AccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.dao.EmptyResultDataAccessException;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,7 +24,11 @@ public class MessageService {
      * @return persisted message
      */
     public Message save(Message message) {
-        return messageRepository.save(message);
+        Optional<Account> accountOptional = accountRepository.findById(message.getPosted_by());
+        if (accountOptional.isPresent()) {
+            return messageRepository.save(message);
+        }
+        return null;
     }
 
     /**
@@ -47,7 +51,6 @@ public class MessageService {
      */
     public Message getMessageById(int id) {
         Optional<Message> optionalMessage = messageRepository.findById(id);
-
         if (optionalMessage.isPresent()) {
             return optionalMessage.get();
         } else {
@@ -55,13 +58,12 @@ public class MessageService {
         }
     }
 
-    public int deleteMessage(int id) {
-        try {
+    public String deleteMessageById(Integer id) {
+        if (messageRepository.existsById(id)){
             messageRepository.deleteById(id);
-            return 1;
-        } catch (EmptyResultDataAccessException e) {
-            return 0;
+            return "1";
         }
+        return "";
     }
 
     /**
